@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>عقدة الجراح</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0e8f8a">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#eef6f6;--card:#fff;--tx:#12303a;--mut:#5d7a82;--ac:#0e8f8a;--bad:#d64545;--ok:#2fa866;--skin:#f1c9a8;--wound:#9c2f3a;--thread:#26266b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1c20;--card:#18292e;--tx:#e6f2f2;--mut:#8fb0b6;--skin:#c79b7c;--thread:#9fb0ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0f1c20;--card:#18292e;--tx:#e6f2f2;--mut:#8fb0b6;--skin:#c79b7c;--thread:#9fb0ff;color-scheme:dark}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--tx);font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:12px;gap:10px;box-sizing:border-box}
+section{flex:1;display:flex;flex-direction:column;gap:10px}
+section[hidden]{display:none}
+.card{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+h1{margin:0;font-size:32px;text-align:center}
+.mut{color:var(--mut);text-align:center;margin:0}
+.center{justify-content:center;text-align:center}
+button{font:inherit;border:0;border-radius:14px;padding:16px;font-size:20px;font-weight:700;color:#fff;background:var(--ac);cursor:pointer}
+button:active{transform:scale(.97)}
+.hud{display:flex;justify-content:space-between;align-items:center;font-weight:700}
+#msg{text-align:center;font-size:18px;min-height:26px;font-weight:600}
+svg{width:100%;height:auto;display:block}
+.chips{display:flex;gap:8px;justify-content:center;direction:ltr;flex-wrap:wrap;min-height:48px}
+.chip{width:44px;height:44px;border-radius:12px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;border:2px solid transparent}
+.chip.cur{border-color:var(--ac)}
+.chip.ok{background:var(--ok);color:#fff}
+.bar{height:16px;background:var(--bg);border-radius:8px;overflow:hidden}
+#tb{height:100%;width:100%;background:var(--ac)}
+#pull{position:relative;height:34px;background:var(--bg);border-radius:10px;direction:ltr;overflow:hidden}
+#zone{position:absolute;top:0;bottom:0;background:var(--ok);opacity:.8}
+#mk{position:absolute;top:0;bottom:0;width:6px;background:var(--tx);border-radius:3px}
+.row{display:flex;gap:10px;direction:ltr}
+.row button{flex:1;font-size:34px;padding:22px}
+#pb{width:100%;font-size:28px;padding:24px;background:var(--bad)}
+.shake{animation:sh .3s}
+@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.big{font-size:44px;font-weight:800}
+</style>
+</head>
+<body>
+<div id="app">
+
+<section id="menu" class="center">
+  <div style="font-size:64px;text-align:center">🪡</div>
+  <h1>عقدة الجراح</h1>
+  <p class="mut">اقفل الجرح بخياطة جراحية متقنة</p>
+  <div class="card">
+    <b>طريقة اللعب:</b><br>
+    ١) اضغط الأسهم بنفس ترتيب لفّات العقدة قبل ما الوقت يخلص.<br>
+    ٢) اضغط «شد» لما المؤشر يكون جوه المنطقة الخضرا.<br>
+    ٣) غلطة واحدة = الخيط يتقطع وتخسر قلب ❤️
+  </div>
+  <button onclick="start()">ابدأ العملية</button>
+  <p class="mut" id="best"></p>
+</section>
+
+<section id="game" hidden>
+  <div class="hud"><span id="hl">المستوى 1</span><span id="hs">0</span><span id="hh">❤️❤️❤️</span></div>
+  <div class="card" id="wc"><svg id="wound" viewBox="0 0 300 150"></svg></div>
+  <div id="msg"></div>
+  <div id="kz">
+    <div class="chips" id="chips"></div>
+    <div class="bar" style="margin-top:10px"><div id="tb"></div></div>
+  </div>
+  <div id="pz" hidden><div id="pull"><div id="zone"></div><div id="mk"></div></div></div>
+  <div style="flex:1"></div>
+  <div class="row" id="kb">
+    <button onpointerdown="tap(0)">←</button>
+    <button onpointerdown="tap(1)">→</button>
+  </div>
+  <button id="pb" hidden onpointerdown="pullTap()">شد!</button>
+</section>
+
+<section id="over" class="center" hidden>
+  <div style="font-size:64px;text-align:center">🩺</div>
+  <h1>انتهت العملية</h1>
+  <div class="card"><div class="big" id="fs">0</div><p class="mut" id="fl"></p><p class="mut" id="fb"></p></div>
+  <button onclick="start()">عملية جديدة</button>
+</section>
+
+</div>
+<script>
+var $=function(i){return document.getElementById(i)};
+var S={},best=0,raf=0;
+try{best=+localStorage.getItem("knotBest")||0}catch(e){}
+function show(n){["menu","game","over"].forEach(function(k){$(k).hidden=k!==n})}
+function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
+function refreshBest(){$("best").textContent=best?"أفضل نتيجة: "+best:""}
+refreshBest();
+
+function total(){return Math.min(3+S.lv,8)}
+function start(){
+  S={lv:1,score:0,lives:3,combo:0,done:0,phase:"",lock:false};
+  show("game");newWound();
+}
+function hud(){
+  $("hl").textContent="المستوى "+S.lv;
+  $("hs").textContent=S.score;
+  $("hh").textContent="❤️".repeat(S.lives)+"🖤".repeat(3-S.lives);
+}
+function newWound(){S.done=0;S.lock=false;drawWound();hud();nextStitch()}
+function drawWound(){
+  var n=total(),gap=4+(1-S.done/n)*20,h="";
+  h+='<rect x="5" y="5" width="290" height="140" rx="22" fill="var(--skin)"/>';
+  h+='<ellipse cx="150" cy="75" rx="'+gap+'" ry="58" fill="var(--wound)"/>';
+  for(var i=0;i<S.done;i++){
+    var y=28+(i+.5)*(94/n);
+    h+='<line x1="'+(150-34)+'" y1="'+y+'" x2="'+(150+34)+'" y2="'+y+'" stroke="var(--thread)" stroke-width="3.5" stroke-linecap="round"/>';
+    h+='<circle cx="'+(150-34)+'" cy="'+y+'" r="3.5" fill="var(--thread)"/><circle cx="'+(150+34)+'" cy="'+y+'" r="3.5" fill="var(--thread)"/>';
+  }
+  $("wound").innerHTML=h;
+}
+function nextStitch(){
+  if(S.done>=total()){levelUp();return}
+  startKnot();
+}
+function startKnot(){
+  var n=Math.min(2+S.lv,6);
+  S.phase="knot";S.seq=[];S.pos=0;S.lock=false;
+  for(var i=0;i<n;i++)S.seq.push(Math.random()<.5?0:1);
+  S.tmax=Math.max(2200,5200-S.lv*350);
+  S.t0=performance.now();
+  $("msg").textContent="اعمل لفّات العقدة بالترتيب";
+  $("kz").hidden=false;$("pz").hidden=true;$("kb").hidden=false;$("pb").hidden=true;
+  renderChips();loop();
+}
+function renderChips(){
+  var h="";
+  S.seq.forEach(function(d,i){
+    h+='<div class="chip'+(i<S.pos?" ok":i===S.pos?" cur":"")+'">'+(d?"→":"←")+"</div>";
+  });
+  $("chips").innerHTML=h;
+}
+function tap(d){
+  if(S.phase!=="knot"||S.lock)return;
+  if(S.seq[S.pos]===d){
+    S.pos++;vib(15);renderChips();
+    if(S.pos>=S.seq.length)startPull();
+  }else fail("لفّة غلط!");
+}
+function startPull(){
+  S.phase="pull";
+  S.zw=Math.max(.12,.3-.02*S.lv);
+  S.zc=.25+Math.random()*.5;
+  S.speed=.0035+S.lv*.0006;
+  S.t0=performance.now();
+  $("msg").textContent="اضغط «شد» والمؤشر في الأخضر";
+  $("kz").hidden=true;$("pz").hidden=false;$("kb").hidden=true;$("pb").hidden=false;
+  var z=$("zone");z.style.left=((S.zc-S.zw/2)*100)+"%";z.style.width=(S.zw*100)+"%";
+}
+function pullTap(){
+  if(S.phase!=="pull"||S.lock)return;
+  if(Math.abs(S.mx-S.zc)<=S.zw/2){
+    S.combo++;
+    S.score+=10+S.combo*5+S.lv*2;
+    S.done++;S.lock=true;S.phase="";
+    vib(30);drawWound();hud();
+    $("msg").textContent=S.combo>2?"ممتاز! كومبو ×"+S.combo+" 🔥":"عقدة محكمة ✅";
+    setTimeout(nextStitch,550);
+  }else fail("الخيط اتقطع!");
+}
+function fail(t){
+  S.lock=true;S.phase="";S.lives--;S.combo=0;
+  vib([60,40,60]);hud();
+  $("msg").textContent=t;
+  var w=$("wc");w.classList.remove("shake");void w.offsetWidth;w.classList.add("shake");
+  if(S.lives<=0){setTimeout(over,700)}else{setTimeout(startKnot,800)}
+}
+function levelUp(){
+  S.lock=true;S.score+=50;S.lv++;
+  S.lives=Math.min(3,S.lives+1);
+  $("msg").textContent="الجرح اتقفل! ننتقل للمستوى "+S.lv+" 🎉";
+  hud();setTimeout(newWound,1300);
+}
+function over(){
+  cancelAnimationFrame(raf);
+  var nb=S.score>best;
+  if(nb){best=S.score;try{localStorage.setItem("knotBest",best)}catch(e){}}
+  $("fs").textContent=S.score;
+  $("fl").textContent="وصلت للمستوى "+S.lv;
+  $("fb").textContent=nb?"رقم قياسي جديد! 🏆":"أفضل نتيجة: "+best;
+  refreshBest();show("over");
+}
+function loop(){
+  cancelAnimationFrame(raf);
+  (function f(now){
+    if(S.phase==="knot"){
+      var r=1-(now-S.t0)/S.tmax;
+      $("tb").style.width=Math.max(0,r*100)+"%";
+      if(r<=0){fail("الوقت خلص!");return}
+    }else if(S.phase==="pull"){
+      S.mx=.5+.5*Math.sin((now-S.t0)*S.speed);
+      $("mk").style.left="calc("+(S.mx*100)+"% - 3px)";
+    }
+    if(S.phase)raf=requestAnimationFrame(f);
+  })(performance.now());
+}
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
