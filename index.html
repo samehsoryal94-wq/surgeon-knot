@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="author" content="Sameh Soryal">
 <title>عقدة الجراح</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0e8f8a">
@@ -13,7 +14,7 @@
 :root[data-theme="dark"]{--bg:#0f1c20;--card:#18292e;--tx:#e6f2f2;--mut:#8fb0b6;--skin:#c79b7c;--thread:#9fb0ff;color-scheme:dark}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--tx);font-family:"Segoe UI",Tahoma,Arial,sans-serif;-webkit-user-select:none;user-select:none;touch-action:manipulation}
-#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:12px;gap:10px;box-sizing:border-box}
+#app{max-width:480px;margin:0 auto;height:100%;display:flex;flex-direction:column;padding:12px;gap:10px;box-sizing:border-box;overflow-y:auto}
 section{flex:1;display:flex;flex-direction:column;gap:10px}
 section[hidden]{display:none}
 .card{background:var(--card);border-radius:16px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
@@ -37,6 +38,8 @@ svg{width:100%;height:auto;display:block}
 .row{display:flex;gap:10px;direction:ltr}
 .row button{flex:1;font-size:34px;padding:22px}
 #pb{width:100%;font-size:28px;padding:24px;background:var(--bad)}
+.seg{display:flex;gap:8px}.seg button{flex:1;font-size:18px;padding:12px;background:var(--bg);color:var(--tx)}.seg button.on{background:var(--ac);color:#fff}
+#pause{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:5;padding:20px}#pause[hidden]{display:none}#pause .card{width:100%;max-width:340px;display:flex;flex-direction:column;gap:10px;text-align:center}
 .shake{animation:sh .3s}
 @keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .big{font-size:44px;font-weight:800}
@@ -55,12 +58,17 @@ svg{width:100%;height:auto;display:block}
     ٢) اضغط «شد» لما المؤشر يكون جوه المنطقة الخضرا.<br>
     ٣) غلطة واحدة = الخيط يتقطع وتخسر قلب ❤️
   </div>
-  <button onclick="start()">ابدأ العملية</button>
+  <div class="card"><div style="margin-bottom:8px">الصعوبة</div><div class="seg" id="dsel"><button onclick="setDiff(0)">😊 سهل</button><button onclick="setDiff(1)">😐 متوسط</button><button onclick="setDiff(2)">😤 صعب</button></div></div>
+  <div class="card" style="display:flex;align-items:center;justify-content:space-between"><span>ابدأ من المستوى</span><select id="lvsel" style="font:inherit;font-size:18px;padding:6px 10px;border-radius:10px"></select></div>
+  <button onclick="start(1)">🧑‍⚕️ لاعب واحد</button>
+  <button onclick="start(2)" style="background:#6a5acd">👥 لاعبين على نفس الموبايل</button>
+  <button id="mt" onclick="toggleMute()" style="background:var(--mut);padding:10px;font-size:18px"></button>
   <p class="mut" id="best"></p>
+  <p class="mut" style="font-size:13px;line-height:1.6">© 2026 Sameh Soryal · جميع الحقوق محفوظة<br>لعبة ترفيهية ولا تُستخدم كمرجع طبي</p>
 </section>
 
 <section id="game" hidden>
-  <div class="hud"><span id="hl">المستوى 1</span><span id="hs">0</span><span id="hh">❤️❤️❤️</span></div>
+  <div class="hud"><button onclick="pauseGame()" style="padding:6px 14px;font-size:18px;background:var(--mut)">⏸</button><span id="hl">المستوى 1</span><span id="hs">0</span><span id="hh">❤️❤️❤️</span></div>
   <div class="card" id="wc"><svg id="wound" viewBox="0 0 300 150"></svg></div>
   <div id="msg"></div>
   <div id="kz">
@@ -78,42 +86,85 @@ svg{width:100%;height:auto;display:block}
 
 <section id="over" class="center" hidden>
   <div style="font-size:64px;text-align:center">🩺</div>
-  <h1>انتهت العملية</h1>
+  <h1 id="ot">انتهت العملية</h1>
   <div class="card"><div class="big" id="fs">0</div><p class="mut" id="fl"></p><p class="mut" id="fb"></p></div>
-  <button onclick="start()">عملية جديدة</button>
+  <button id="ob" onclick="start(1)">عملية جديدة</button>
+  <button onclick="show('menu')" style="background:var(--mut)">القائمة الرئيسية</button>
+</section>
+
+<section id="lvl" class="center" hidden>
+  <div style="font-size:64px;text-align:center">🎉</div>
+  <h1 id="lt">المستوى اكتمل</h1>
+  <div class="card"><div class="big" id="ls">0</div><p class="mut">نقاطك</p><p class="mut" id="ll"></p></div>
+  <button id="ln" onclick="nextLevel()">المستوى التالي</button>
+  <button onclick="show('menu')" style="background:var(--mut)">القائمة الرئيسية</button>
 </section>
 
 </div>
+<div id="pause" hidden><div class="card"><h2 style="margin:0">⏸ إيقاف مؤقت</h2><button onclick="resumeGame()">▶ متابعة</button><button onclick="exitGame()" style="background:var(--bad)">🏠 القائمة الرئيسية</button></div></div>
 <script>
 var $=function(i){return document.getElementById(i)};
-var S={},best=0,raf=0;
-try{best=+localStorage.getItem("knotBest")||0}catch(e){}
-function show(n){["menu","game","over"].forEach(function(k){$(k).hidden=k!==n})}
+var S={},best=0,raf=0,maxLv=1;
+var DF=[{lives:4,t:1.4,z:1.35,sp:.8,sc:.8},{lives:3,t:1,z:1,sp:1,sc:1},{lives:2,t:.75,z:.75,sp:1.25,sc:1.5}],dif=1,AC=null,mute=false;
+try{var _d=localStorage.getItem("knotDiff");dif=_d===null?1:+_d;if(!(dif>=0&&dif<=2))dif=1;mute=localStorage.getItem("knotMute")==="1"}catch(e){dif=1}
+function setDiff(i){dif=i;try{localStorage.setItem("knotDiff",i)}catch(e){}var b=$("dsel").children;for(var k=0;k<b.length;k++)b[k].className=k===i?"on":""}
+function updateMt(){$("mt").textContent=mute?"🔇 الصوت: مكتوم":"🔊 الصوت: شغال"}
+function toggleMute(){mute=!mute;try{localStorage.setItem("knotMute",mute?"1":"0")}catch(e){}updateMt();snd("click")}
+function tone(f,t0,d,ty,v,f2){var o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime+t0;o.type=ty||"sine";o.frequency.setValueAtTime(f,t);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+d);g.gain.setValueAtTime(v||.15,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(AC.destination);o.start(t);o.stop(t+d+.02)}
+var SN={tap:[[620,0,.06,"sine",.12]],ok:[[660,0,.1,"triangle",.18],[880,.09,.16,"triangle",.18]],bad:[[160,0,.25,"sawtooth",.12,90]],snap:[[420,0,.3,"sawtooth",.12,70]],step:[[740,0,.08,"triangle",.14]],win:[[523,0,.14,"triangle",.18],[659,.13,.14,"triangle",.18],[784,.26,.14,"triangle",.18],[1047,.39,.3,"triangle",.18]],over:[[392,0,.22,"sawtooth",.12],[330,.22,.22,"sawtooth",.12],[262,.44,.4,"sawtooth",.12]],click:[[500,0,.04,"square",.06]]};
+function snd(k){if(mute)return;try{if(!AC)AC=new(window.AudioContext||window.webkitAudioContext)();if(AC.state==="suspended")AC.resume();SN[k].forEach(function(a){tone(a[0],a[1],a[2],a[3],a[4],a[5])})}catch(e){}}
+
+var KD=[{n:"عقدة عادية",ic:"🪢"},{n:"عقدة مزدوجة",ic:"✌️"},{n:"خيط رفيع",ic:"🧵"},{n:"سباق الوقت",ic:"⏱️"}],ANG=[0,22,-22,70],BP=["الذراع","الساق","الكف","الجبهة"];
+var ARM='<path d="M10 42C90 34 170 48 238 56L238 94C170 104 90 116 10 108Z"/><ellipse cx="262" cy="75" rx="30" ry="24"/>',
+HAND='<defs><radialGradient id="hs" cx="40%" cy="40%" r="75%"><stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset="1" stop-color="#000" stop-opacity=".2"/></radialGradient></defs><path d="M0 50L92 56L92 106L0 112Z"/><rect x="108" y="14" width="76" height="24" rx="12" transform="rotate(-28 120 30)"/><path d="M84 52C112 38 164 34 198 42L198 114C164 122 116 122 84 108Z"/><rect x="178" y="36" width="110" height="20" rx="10"/><rect x="178" y="57" width="118" height="20" rx="10"/><rect x="178" y="78" width="110" height="19" rx="9.5"/><rect x="178" y="98" width="88" height="17" rx="8.5"/><path d="M84 52C112 38 164 34 198 42L198 114C164 122 116 122 84 108Z" fill="url(#hs)"/><g fill="none" stroke="#000" stroke-opacity=".2" stroke-width="1.5" stroke-linecap="round"><path d="M200 56.5H290M200 77.5H298M200 97.5H290"/><path d="M222 40V52M252 40V52M222 61V73M254 61V73M222 82V93M250 82V93M218 102V111M240 102V111"/><path d="M100 66C130 74 160 72 190 66M104 86C130 96 160 96 186 90M116 56C124 80 140 96 160 100"/></g>',
+FACE='<defs><radialGradient id="fs" cx="45%" cy="38%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></radialGradient></defs><path d="M126 118H174L180 150H120Z"/><ellipse cx="98" cy="76" rx="7" ry="14"/><ellipse cx="202" cy="76" rx="7" ry="14"/><path d="M150 8C190 8 202 40 200 72C198 104 180 130 150 134C120 130 102 104 100 72C98 40 110 8 150 8Z"/><path d="M150 8C190 8 202 40 200 72C198 104 180 130 150 134C120 130 102 104 100 72C98 40 110 8 150 8Z" fill="url(#fs)"/><circle cx="118" cy="98" r="12" fill="#e06666" fill-opacity=".13"/><circle cx="182" cy="98" r="12" fill="#e06666" fill-opacity=".13"/><path d="M98 66C90 20 120 0 150 2C182 0 212 20 202 66C198 44 190 30 150 26C110 30 102 44 98 66Z" fill="#3b2a20"/><path d="M114 76Q126 68 138 76Q126 83 114 76Z" fill="#fff"/><path d="M162 76Q174 68 186 76Q174 83 162 76Z" fill="#fff"/><circle cx="126" cy="76" r="4.5" fill="#5a3a22"/><circle cx="174" cy="76" r="4.5" fill="#5a3a22"/><circle cx="126" cy="76" r="2" fill="#111"/><circle cx="174" cy="76" r="2" fill="#111"/><circle cx="127.5" cy="74.5" r="1" fill="#fff"/><circle cx="175.5" cy="74.5" r="1" fill="#fff"/><g fill="none" stroke="#3b2a20" stroke-linecap="round"><path d="M114 76Q126 68 138 76M162 76Q174 68 186 76" stroke-width="2"/><path d="M112 64Q126 56 140 62M160 62Q174 56 188 64" stroke-width="4"/></g><g fill="none" stroke="#000" stroke-opacity=".25" stroke-width="2" stroke-linecap="round"><path d="M150 80C147 92 143 98 143 102Q150 106 157 102C157 98 153 92 150 80"/><path d="M104 74Q98 76 104 82M196 74Q202 76 196 82"/></g><ellipse cx="146" cy="102" rx="1.8" ry="1.2" fill="#000" fill-opacity=".35"/><ellipse cx="154" cy="102" rx="1.8" ry="1.2" fill="#000" fill-opacity=".35"/><path d="M134 114Q142 109 150 111Q158 109 166 114Q150 118 134 114Z" fill="#b5545a"/><path d="M136 115Q150 127 164 115Q150 120 136 115Z" fill="#c76a6f"/><path d="M134 114Q150 119 166 114" stroke="#7a3338" stroke-width="1.5" fill="none"/>',
+LEG='<path d="M96 4L152 4L152 100C152 106 170 106 224 112C256 116 258 140 232 142L118 142C92 142 90 122 94 104Z"/>',
+TORSO='<path d="M70 8H230C246 8 252 24 250 44L244 120C242 136 232 142 216 142H84C68 142 58 136 56 120L50 44C48 24 54 8 70 8Z"/><circle cx="150" cy="84" r="4" fill="#b98a6a"/>',
+B=[{n:"الذراع",s:ARM,c:[120,76],a:80,L:40,w:22},{n:"اليد",s:HAND,c:[140,80],a:15,L:30,w:20},{n:"الجبهة",s:FACE,c:[150,42],a:90,L:22,w:10},{n:"الساق",s:LEG,c:[124,54],a:12,L:34,w:24},{n:"القدم",s:LEG,c:[196,124],a:90,L:32,w:11},{n:"البطن",s:TORSO,c:[150,76],a:0,L:54,w:32}];
+function pickKind(){var p=[0,0,2,3,1].slice(0,Math.min(5,S.lv+1));return p[Math.floor(Math.random()*p.length)]}
+try{best=+localStorage.getItem("knotBest")||0;maxLv=+localStorage.getItem("knotMax")||1}catch(e){}
+function fillSel(){var h="";for(var i=1;i<=maxLv;i++)h+="<option value=\""+i+"\">"+i+"</option>";$("lvsel").innerHTML=h;$("lvsel").value=maxLv}
+function show(n){["menu","game","over","lvl"].forEach(function(k){$(k).hidden=k!==n})}
 function vib(p){try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}}
 function refreshBest(){$("best").textContent=best?"أفضل نتيجة: "+best:""}
-refreshBest();
+refreshBest();fillSel();setDiff(dif);updateMt();
 
+function pauseGame(){
+  if(S.paused||S.lock||(S.phase!=="knot"&&S.phase!=="pull"))return;
+  S.paused=true;S.pAt=performance.now();cancelAnimationFrame(raf);$("pause").hidden=false;snd("click");
+}
+function resumeGame(){
+  if(!S.paused)return;
+  S.t0+=performance.now()-S.pAt;S.paused=false;$("pause").hidden=true;snd("click");loop();
+}
+function exitGame(){
+  cancelAnimationFrame(raf);S.paused=false;S.phase="";S.lock=true;$("pause").hidden=true;show("menu");
+}
+document.addEventListener("visibilitychange",function(){if(document.hidden)pauseGame()});
 function total(){return Math.min(3+S.lv,8)}
-function start(){
-  S={lv:1,score:0,lives:3,combo:0,done:0,phase:"",lock:false};
+function start(m,keep){
+  var res=keep?S.res:[],pl=keep?1:0,lv=keep?S.l0:(m===2?1:(+$("lvsel").value||1));
+  S={mode:m||1,res:res,pl:pl,l0:lv,lv:lv,score:0,lives:DF[dif].lives,maxL:DF[dif].lives,combo:0,done:0,phase:"",lock:false};snd("click");
   show("game");newWound();
 }
+function nextPlayer(){start(2,true)}
+function nextLevel(){S.lock=false;show("game");newWound()}
 function hud(){
-  $("hl").textContent="المستوى "+S.lv;
+  $("hl").textContent=(S.mode===2?"لاعب "+(S.pl+1)+" · ":"")+"المستوى "+S.lv+" · "+B[(S.lv-1)%B.length].n;
   $("hs").textContent=S.score;
-  $("hh").textContent="❤️".repeat(S.lives)+"🖤".repeat(3-S.lives);
+  $("hh").textContent="❤️".repeat(S.lives)+"🖤".repeat(S.maxL-S.lives);
 }
 function newWound(){S.done=0;S.lock=false;drawWound();hud();nextStitch()}
 function drawWound(){
-  var n=total(),gap=4+(1-S.done/n)*20,h="";
-  h+='<rect x="5" y="5" width="290" height="140" rx="22" fill="var(--skin)"/>';
-  h+='<ellipse cx="150" cy="75" rx="'+gap+'" ry="58" fill="var(--wound)"/>';
+  var b=B[(S.lv-1)%B.length],n=total(),gap=3+(1-S.done/n)*b.w*.6,cx=b.c[0],cy=b.c[1],sw=b.L<30?2.5:3.5;
+  var h='<g fill="var(--skin)">'+b.s+'</g>';
+  h+='<g transform="rotate('+b.a+' '+cx+' '+cy+')"><ellipse cx="'+cx+'" cy="'+cy+'" rx="'+gap+'" ry="'+b.L+'" fill="var(--wound)"/>';
   for(var i=0;i<S.done;i++){
-    var y=28+(i+.5)*(94/n);
-    h+='<line x1="'+(150-34)+'" y1="'+y+'" x2="'+(150+34)+'" y2="'+y+'" stroke="var(--thread)" stroke-width="3.5" stroke-linecap="round"/>';
-    h+='<circle cx="'+(150-34)+'" cy="'+y+'" r="3.5" fill="var(--thread)"/><circle cx="'+(150+34)+'" cy="'+y+'" r="3.5" fill="var(--thread)"/>';
+    var y=cy-b.L*.82+(i+.5)*(1.64*b.L/n),x1=cx-b.w,x2=cx+b.w;
+    h+='<line x1="'+x1+'" y1="'+y+'" x2="'+x2+'" y2="'+y+'" stroke="var(--thread)" stroke-width="'+sw+'" stroke-linecap="round"/>';
+    h+='<circle cx="'+x1+'" cy="'+y+'" r="'+sw+'" fill="var(--thread)"/><circle cx="'+x2+'" cy="'+y+'" r="'+sw+'" fill="var(--thread)"/>';
   }
-  $("wound").innerHTML=h;
+  h+="</g>";$("wound").innerHTML=h;
 }
 function nextStitch(){
   if(S.done>=total()){levelUp();return}
@@ -123,9 +174,9 @@ function startKnot(){
   var n=Math.min(2+S.lv,6);
   S.phase="knot";S.seq=[];S.pos=0;S.lock=false;
   for(var i=0;i<n;i++)S.seq.push(Math.random()<.5?0:1);
-  S.tmax=Math.max(2200,5200-S.lv*350);
+  S.k=pickKind();S.tmax=Math.max(2200,5200-S.lv*350)*(S.k===3?.6:1)*DF[dif].t;
   S.t0=performance.now();
-  $("msg").textContent="اعمل لفّات العقدة بالترتيب";
+  $("msg").textContent=KD[S.k].ic+" "+KD[S.k].n+" · اعمل اللفّات بالترتيب";
   $("kz").hidden=false;$("pz").hidden=true;$("kb").hidden=false;$("pb").hidden=true;
   renderChips();loop();
 }
@@ -137,53 +188,69 @@ function renderChips(){
   $("chips").innerHTML=h;
 }
 function tap(d){
-  if(S.phase!=="knot"||S.lock)return;
+  if(S.phase!=="knot"||S.lock||S.paused)return;
   if(S.seq[S.pos]===d){
-    S.pos++;vib(15);renderChips();
+    S.pos++;vib(15);snd("tap");renderChips();
     if(S.pos>=S.seq.length)startPull();
   }else fail("لفّة غلط!");
 }
+function setZone(){var z=$("zone");z.style.left=((S.zc-S.zw/2)*100)+"%";z.style.width=(S.zw*100)+"%"}
 function startPull(){
   S.phase="pull";
-  S.zw=Math.max(.12,.3-.02*S.lv);
+  S.zw=Math.min(.6,Math.max(.09,(.3-.02*S.lv)*(S.k===2?.65:1)*DF[dif].z));
   S.zc=.25+Math.random()*.5;
-  S.speed=.0035+S.lv*.0006;
+  S.speed=(.0035+S.lv*.0006)*(S.k===2?1.25:1)*DF[dif].sp;
+  S.need=S.k===1?2:1;S.got=0;
   S.t0=performance.now();
-  $("msg").textContent="اضغط «شد» والمؤشر في الأخضر";
+  $("msg").textContent=(S.k===1?"شدّتين ورا بعض: ":"")+"اضغط «شد» والمؤشر في الأخضر";
   $("kz").hidden=true;$("pz").hidden=false;$("kb").hidden=true;$("pb").hidden=false;
-  var z=$("zone");z.style.left=((S.zc-S.zw/2)*100)+"%";z.style.width=(S.zw*100)+"%";
+  setZone();
 }
 function pullTap(){
-  if(S.phase!=="pull"||S.lock)return;
+  if(S.phase!=="pull"||S.lock||S.paused)return;
   if(Math.abs(S.mx-S.zc)<=S.zw/2){
+    if(S.need>1&&S.got<S.need-1){S.got++;S.zc=.25+Math.random()*.5;setZone();vib(20);snd("step");$("msg").textContent="ممتاز! شدّة تانية 🔁";return}
     S.combo++;
-    S.score+=10+S.combo*5+S.lv*2;
+    S.score+=Math.round((10+S.combo*5+S.lv*2)*DF[dif].sc);
     S.done++;S.lock=true;S.phase="";
-    vib(30);drawWound();hud();
+    vib(30);snd("ok");drawWound();hud();
     $("msg").textContent=S.combo>2?"ممتاز! كومبو ×"+S.combo+" 🔥":"عقدة محكمة ✅";
     setTimeout(nextStitch,550);
   }else fail("الخيط اتقطع!");
 }
 function fail(t){
   S.lock=true;S.phase="";S.lives--;S.combo=0;
-  vib([60,40,60]);hud();
+  vib([60,40,60]);snd(t==="الخيط اتقطع!"?"snap":"bad");hud();
   $("msg").textContent=t;
   var w=$("wc");w.classList.remove("shake");void w.offsetWidth;w.classList.add("shake");
   if(S.lives<=0){setTimeout(over,700)}else{setTimeout(startKnot,800)}
 }
 function levelUp(){
   S.lock=true;S.score+=50;S.lv++;
-  S.lives=Math.min(3,S.lives+1);
-  $("msg").textContent="الجرح اتقفل! ننتقل للمستوى "+S.lv+" 🎉";
-  hud();setTimeout(newWound,1300);
+  S.lives=Math.min(S.maxL,S.lives+1);
+  if(S.lv>maxLv){maxLv=S.lv;try{localStorage.setItem("knotMax",maxLv)}catch(e){}fillSel()}
+  hud();
+  snd("win");$("lt").textContent="المستوى "+(S.lv-1)+" اكتمل ✅";
+  $("ls").textContent=S.score;
+  $("ll").textContent="الجرح اتقفل بنجاح";
+  $("ln").textContent="المستوى "+S.lv+" ◀";
+  setTimeout(function(){show("lvl")},700);
 }
 function over(){
-  cancelAnimationFrame(raf);
+  cancelAnimationFrame(raf);snd("over");
   var nb=S.score>best;
   if(nb){best=S.score;try{localStorage.setItem("knotBest",best)}catch(e){}}
+  var b=$("ob");
   $("fs").textContent=S.score;
   $("fl").textContent="وصلت للمستوى "+S.lv;
   $("fb").textContent=nb?"رقم قياسي جديد! 🏆":"أفضل نتيجة: "+best;
+  $("ot").textContent="انتهت العملية";
+  b.textContent="عملية جديدة";b.onclick=function(){start(1)};
+  if(S.mode===2){
+    S.res[S.pl]=S.score;
+    if(S.pl===0){$("ot").textContent="انتهى دور اللاعب 1";$("fb").textContent="سلّم الموبايل للاعب 2";b.textContent="دور اللاعب 2 ◀";b.onclick=nextPlayer}
+    else{var a=S.res[0],c=S.res[1];$("ot").textContent=a===c?"تعادل 🤝":(a>c?"اللاعب 1 فاز 🏆":"اللاعب 2 فاز 🏆");$("fs").textContent=a+" : "+c;$("fl").textContent="لاعب 1 : لاعب 2";$("fb").textContent="";b.onclick=function(){start(2)}}
+  }
   refreshBest();show("over");
 }
 function loop(){
